@@ -41,6 +41,7 @@
  *     editorFactory            - (default null) A factory object responsible to creating an editor for a given cell.
  *                                Must implement getEditor(column).
  *     multiSelect              - (default true) Enable multiple row selection.
+ *     editCommandHandler       - (default null) args: item,column,editCommand
  *
  * COLUMN DEFINITION (columns) OPTIONS:
  *     id                  - Column ID.
@@ -277,6 +278,7 @@ if (!jQuery.fn.drag) {
         var $viewport;
         var $canvas;
         var $style;
+        var $pastezone;
         var stylesheet;
         var viewportH, viewportW;
         var viewportHasHScroll;
@@ -395,6 +397,7 @@ if (!jQuery.fn.drag) {
             createColumnHeaders();
             setupColumnSort();
             setupDragEvents();
+            setupPasteZone();
             createCssRules();
 
             resizeAndRender();
@@ -875,6 +878,19 @@ if (!jQuery.fn.drag) {
                             self.onCellRangeSelected(fixUpRange(dd.range));
                     }
                 });
+        }
+        
+        function setupPasteZone() {
+            $pastezone = $("<textarea tabindex='-1' style='position:absolute;width:0px;height:0px;border:none'></textarea>")
+                .appendTo($canvas)
+                .bind("paste", function() {
+                    setTimeout(function() {
+                        self.onPaste && self.onPaste($pastezone.val());
+                        $pastezone.val("");
+                        focusOnCurrentCell();
+                    });
+                })
+                .focus();
         }
 
         function measureCellPaddingAndBorder() {
@@ -1731,7 +1747,7 @@ if (!jQuery.fn.drag) {
                     }
 
                     if (!$.browser.msie) {
-                        $canvas[0].focus();
+                        $pastezone.focus();
                     }
 
                     return false;
@@ -1908,15 +1924,16 @@ if (!jQuery.fn.drag) {
         }
 
         function focusOnCurrentCell() {
-            // lazily enable the cell to recieve keyboard focus
+            // lazily enable the cell to receive keyboard focus
             $(currentCellNode)
                 .attr("tabIndex",0)
-                .attr("hideFocus",true);
+                .attr("hideFocus",true)
+                .append($pastezone);
 
             if ($.browser.msie && parseInt($.browser.version) < 8) {
                 // IE7 tries to scroll the viewport so that the item being focused is aligned to the left border
                 // IE-specific .setActive() sets the focus, but doesn't scroll
-                currentCellNode.setActive();
+                $pastezone.setActive();
 
                 var left = $(currentCellNode).position().left,
                     right = left + $(currentCellNode).outerWidth(),
@@ -1929,7 +1946,7 @@ if (!jQuery.fn.drag) {
                     $viewport.scrollLeft(Math.min(left, right - $viewport[0].clientWidth));
             }
             else
-                currentCellNode.focus();
+                $pastezone.focus();
         }
 
         function setSelectedCell(newCell,editMode) {
@@ -2434,6 +2451,7 @@ if (!jQuery.fn.drag) {
             "onCurrentCellChanged":  null,
             "onCurrentCellPositionChanged":  null,
             "onCellRangeSelected":   null,
+            "onPaste":               null,
 
             // Methods
             "getColumns":          getColumns,
@@ -2494,3 +2512,4 @@ if (!jQuery.fn.drag) {
         }
     });
 }(jQuery));
+
